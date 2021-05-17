@@ -5,6 +5,13 @@
 #include "RTClib.h"
 #include <MatrixHardware_ESP32_V0.h>    
 #include <SmartMatrix.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
+#include "secrets.h"
+
+WiFiMulti WiFiMulti;
+const char* ssid     = WIFI_SSID;
+const char* password = WIFI_PASS;
 
 #define COLOR_DEPTH 24                  // Choose the color depth used for storing pixels in the layers: 24 or 48 (24 is good for most sketches - If the sketch uses type `rgb24` directly, COLOR_DEPTH must be 24)
 #define WHITE   rgb24(0xFF,0xFF,0xFF)
@@ -29,8 +36,12 @@ SMARTMATRIX_ALLOCATE_INDEXED_LAYER(indexedLayer3, kMatrixWidth, kMatrixHeight, C
 
 RTC_DS1307 rtc;
 const int defaultBrightness = (15*255)/100;     // dim: 35% brightness
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "AUG", "SPT", "OCT", "NOV", "DEC"};
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = -6 * 60 * 60;
+const int   daylightOffset_sec = 3600;
 
 void setup() {
   Serial.begin(57600);
@@ -42,14 +53,62 @@ void setup() {
     abort();
   }
 
+  Serial.println("Connecting to ");
+  Serial.println(ssid);
+  WiFiMulti.addAP(ssid, password);
+  while (WiFiMulti.run() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected.");
+
+
+
   if (! rtc.isrunning()) {
     Serial.println("RTC is NOT running, let's set the time!");
-    // When time needs to be set on a new device, or after a power loss, the
-    // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
-    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+    
+    // Get time from server
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    Serial.println("Getting time");
+    while (!time(nullptr)) {
+      Serial.print(".");
+      delay(1000);
+    }
+    
+    struct tm timeinfo;
+    if(!getLocalTime(&timeinfo)){
+      Serial.println("Failed to obtain time");
+      // When time needs to be set on a new device, or after a power loss, the
+      // following line sets the RTC to the date & time this sketch was compiled
+      rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      // This line sets the RTC with an explicit date & time, for example to set
+      // January 21, 2014 at 3am you would call:
+      // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+    } else if(getLocalTime(&timeinfo)){
+    
+      Serial.println("Time obtained from server");
+      Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+      Serial.print("Day of week: ");
+      Serial.println(&timeinfo, "%A");
+      Serial.print("Month: ");
+      Serial.println(&timeinfo, "%B");
+      Serial.print("Day of Month: ");
+      Serial.println(&timeinfo, "%d");
+      Serial.print("Year: ");
+      Serial.println(&timeinfo, "%Y");
+      Serial.print("Hour: ");
+      Serial.println(&timeinfo, "%H");
+      Serial.print("Hour (12 hour format): ");
+      Serial.println(&timeinfo, "%I");
+      Serial.print("Minute: ");
+      Serial.println(&timeinfo, "%M");
+      Serial.print("Second: ");
+      Serial.println(&timeinfo, "%S");
+      // When the datetime is retrieved from the server configure the rtc time
+      rtc.adjust(DateTime(timeinfo.tm_year, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));
+    }
   }
 
   // setup matrix
@@ -79,7 +138,7 @@ void loop() {
   indexedLayer2.setIndexedColor(1, BLUE);
   indexedLayer2.drawString(0, 11, 1, txtBuffer);
   indexedLayer2.swapBuffers();
-  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
+  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year()-100);
   indexedLayer3.setFont(font5x7);
   indexedLayer3.setIndexedColor(1, BLUE);
   indexedLayer3.drawString(0, 25, 1, txtBuffer); 
