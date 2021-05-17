@@ -65,7 +65,6 @@ void setup() {
   Serial.println("WiFi connected.");
 
 
-
   if (! rtc.isrunning()) {
     Serial.println("RTC is NOT running, let's set the time!");
     
@@ -132,7 +131,7 @@ void loop() {
   sprintf(txtBuffer, "%02d:%02d:%02d", now.hour(), now.minute(), now.second());
   indexedLayer1.setFont(font8x13);
   indexedLayer1.setIndexedColor(1, BLUE);
-  indexedLayer1.drawString(0, 0, 1, daysOfTheWeek[now.dayOfTheWeek()]);
+  indexedLayer1.drawString(1, 0, 1, daysOfTheWeek[now.dayOfTheWeek()]);
   indexedLayer1.swapBuffers();
   indexedLayer2.setFont(font8x13);
   indexedLayer2.setIndexedColor(1, BLUE);
