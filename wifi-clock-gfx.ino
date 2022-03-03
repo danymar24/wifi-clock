@@ -3,13 +3,17 @@
 // Wifi Clock
 // Adapted from HackerBox 0065 Clock Demo for 64x32 LED Array and SmartMatrix example file
 //
+#include <EEPROM.h>
+#include <ArduinoJson.h>
+#include <StreamUtils.h>
 
 #include "RTClib.h"
-#include <MatrixHardware_ESP32_V0.h>    
-#include <SmartMatrix.h>
 #include "colors.h"
 #include "matrix_config.h"
 #include "wifi_config.h"
+#include "temperature_sensor.h"
+#include "weather.h"
+#include "fonts.h"
 
 RTC_DS1307 rtc;
 
@@ -17,12 +21,13 @@ char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "AUG", "SPT", "OCT", "NOV", "DEC"};
 
 const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = -6 * 60 * 60;
+const long  gmtOffset_sec = -6 * 3600;
 const int   daylightOffset_sec = 3600;
 
 void setup() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP  
   Serial.begin(57600);
+  dht.begin();
   delay(1000);
   Serial.println("\n Starting");
   Serial.println("DS1307RTC Test");
@@ -43,8 +48,10 @@ void setup() {
   else {
     //if you get here you have connected to the WiFi 
     Serial.println("WiFi connected.");
+    EEPROM.begin(512);
+    
 
-    if (! rtc.isrunning()) {
+    if (!rtc.isrunning()) {
       Serial.println("RTC is NOT running, let's set the time!");
       
       // Get time from server
@@ -76,6 +83,7 @@ void setup() {
         Serial.println(&timeinfo, "%d");
         Serial.print("Year: ");
         Serial.println(&timeinfo, "%Y");
+        Serial.println(timeinfo.tm_year);
         Serial.print("Hour: ");
         Serial.println(&timeinfo, "%H");
         Serial.print("Hour (12 hour format): ");
@@ -84,6 +92,7 @@ void setup() {
         Serial.println(&timeinfo, "%M");
         Serial.print("Second: ");
         Serial.println(&timeinfo, "%S");
+        
         // When the datetime is retrieved from the server configure the rtc time
         rtc.adjust(DateTime(timeinfo.tm_year, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));
       }
@@ -99,38 +108,22 @@ void loop() {
   checkButton();
   DateTime now = rtc.now();
 
-  // clear screen before writing new text
-  indexedLayer1.fillScreen(0);
-  indexedLayer2.fillScreen(0);
-  indexedLayer3.fillScreen(0);
-  indexedLayerWifi.fillScreen(0);
-
-  sprintf(txtBuffer, "%02d:%02d:%02d", now.hour(), now.minute(), now.second());
-  indexedLayer1.setFont(font8x13);
-  indexedLayer1.setIndexedColor(1, BLUE);
-  indexedLayer1.drawString(1, 0, 1, daysOfTheWeek[now.dayOfTheWeek()]);
-  indexedLayer1.swapBuffers();
-  indexedLayer2.setFont(font8x13);
-  indexedLayer2.setIndexedColor(1, BLUE);
-  indexedLayer2.drawString(0, 11, 1, txtBuffer);
-  indexedLayer2.swapBuffers();
-  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year());
-  indexedLayer3.setFont(font5x7);
-  indexedLayer3.setIndexedColor(1, BLUE);
-  indexedLayer3.drawString(0, 25, 1, txtBuffer); 
-  indexedLayer3.swapBuffers();
+  matrix->clear();
+  
+  sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
+  displayText(txtBuffer, 2, 3, 9);
+  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year()-100);
+  displayText(txtBuffer, 1, 0, 25);
   
   if(WiFi.status() != WL_CONNECTED) {
-    indexedLayerWifi.setFont(font3x5);
-    indexedLayerWifi.setIndexedColor(1, GREEN);
-    indexedLayerWifi.drawString(50, 1, 1, ""); 
-    indexedLayerWifi.swapBuffers();
+    
   } else {
-    indexedLayerWifi.setFont(font3x5);
-    indexedLayerWifi.setIndexedColor(1, GREEN);
-    indexedLayerWifi.drawString(61, -2, 1, "."); 
-    indexedLayerWifi.swapBuffers();
+    matrix->drawRect(61,1, 2,2, LED_GREEN_MEDIUM);
+    getWeather();
   }
+  //getLocalTemperature();
+  
+  matrix->show();
 
   delay(500);
 }

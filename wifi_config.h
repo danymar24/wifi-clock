@@ -15,7 +15,7 @@ void checkButton(){
     if( digitalRead(TRIGGER_PIN) == LOW ){
       Serial.println("Button Pressed");
       // still holding button for 3000 ms, reset settings, code not ideaa for production
-      delay(3000); // reset delay hold
+      delay(10000); // reset delay hold
       if( digitalRead(TRIGGER_PIN) == LOW ){
         Serial.println("Button Held");
         Serial.println("Erasing Config, restarting");
