@@ -14,6 +14,7 @@
 #include "temperature_sensor.h"
 #include "weather.h"
 #include "fonts.h"
+#include "ota.h"
 
 RTC_DS1307 rtc;
 
@@ -23,6 +24,8 @@ char monthsOfTheYr[12][4] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JLY", "A
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = -6 * 3600;
 const int   daylightOffset_sec = 3600;
+unsigned long mainTimerLastTime = 0;
+unsigned long mainTimerDelay = 500;
 
 void setup() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP  
@@ -49,7 +52,7 @@ void setup() {
     //if you get here you have connected to the WiFi 
     Serial.println("WiFi connected.");
     EEPROM.begin(512);
-    
+    setupOTA();
 
     if (!rtc.isrunning()) {
       Serial.println("RTC is NOT running, let's set the time!");
@@ -104,26 +107,31 @@ void setup() {
 }
 
 void loop() {
-  char txtBuffer[12];
-  checkButton();
-  DateTime now = rtc.now();
 
-  matrix->clear();
+  if (mainTimerLastTime == 0) {
+    char txtBuffer[12];
+    checkButton();
+    DateTime now = rtc.now();
   
-  sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
-  displayText(txtBuffer, 2, 3, 9);
-  sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year()-100);
-  displayText(txtBuffer, 1, 0, 25);
-  
-  if(WiFi.status() != WL_CONNECTED) {
+    matrix->clear();
     
-  } else {
-    matrix->drawRect(61,1, 2,2, LED_GREEN_MEDIUM);
-    getWeather();
-  }
-  //getLocalTemperature();
+    sprintf(txtBuffer, "%02d:%02d", now.hour(), now.minute());
+    displayText(txtBuffer, 2, 3, 9);
+    sprintf(txtBuffer, "%02d %s %04d", now.day(), monthsOfTheYr[(now.month()-1)], now.year()-100);
+    displayText(txtBuffer, 1, 0, 25);
+    
+    if(WiFi.status() != WL_CONNECTED) {
+      getLocalTemperature();
+    } else {
+      handleOTA();
+      matrix->drawRect(61,1, 2,2, LED_GREEN_MEDIUM);
+      getWeather();
+    }
   
-  matrix->show();
+    matrix->show();
+  }
 
-  delay(500);
+  if ((millis() - mainTimerLastTime) > mainTimerDelay) {
+    mainTimerLastTime = 0;
+  }
 }
