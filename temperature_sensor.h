@@ -27,28 +27,28 @@
 // as the current DHT reading algorithm adjusts itself to work on faster procs.
 DHT dht(DHTPIN, DHTTYPE);
 
+char localTempWeather[12];
+// THE DEFAULT TIMER IS SET TO 10 SECONDS FOR TESTING PURPOSES
+unsigned long temperatureSensorLastTime = 0;
+// Timer set to 10 minutes (600000)
+//unsigned long timerDelay = 600000;
+// Set timer to 10 seconds (10000)
+unsigned long temperatureSensorTimerDelay = 10000;
+
 void getLocalTemperature() {
+  if (temperatureSensorLastTime == 0) {
+    
+    int localHumidity = dht.readHumidity();
+    int localTemp = dht.readTemperature(true);
+  
+    temperatureSensorLastTime = millis();
 
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  int h = dht.readHumidity();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  int f = dht.readTemperature(true);
+    sprintf(localTempWeather, "%02dF %02d%%", localTemp, localHumidity);
+    displayText(localTempWeather, 3/4, 1, 0);
 
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(f)) {
-    Serial.println(F("Failed to read from DHT sensor!"));
-    return;
   }
 
-  // Compute heat index in Fahrenheit (the default)
-  float hif = dht.computeHeatIndex(f, h);
-
-  Serial.print(F("Humidity: "));
-  Serial.print(h);
-  Serial.print(F("%  Temperature: "));
-  Serial.print(f);
-  Serial.print(F("°F  Heat index: "));
-  Serial.print(hif);
-  Serial.println(F("°F"));
+  if ((millis() - temperatureSensorLastTime) > temperatureSensorTimerDelay) {
+    temperatureSensorLastTime = 0;
+  }
 }
