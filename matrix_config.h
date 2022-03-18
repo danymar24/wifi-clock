@@ -69,7 +69,7 @@ void displayText(char* text, uint8_t size, uint8_t posX, uint8_t posY, int color
 /**
  * @function displayText - accepts uint8_t text
  */
-void displayText(uint8_t text, uint8_t size, uint8_t posX, uint8_t posY, int color = LED_BLUE_HIGH) {
+void displayText(uint8_t text, float size, uint8_t posX, uint8_t posY, int color = LED_BLUE_HIGH) {
   
   matrix->setTextWrap(false);
   matrix->setTextSize(size);

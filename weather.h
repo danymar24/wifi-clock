@@ -11,11 +11,11 @@ String units = "imperial";
 
 // THE DEFAULT TIMER IS SET TO 10 SECONDS FOR TESTING PURPOSES
 // For a final application, check the API call limits per hour/minute to avoid getting blocked/banned
-unsigned long lastTime = 0;
+unsigned long weatherLastTime = 0;
 // Timer set to 10 minutes (600000)
 //unsigned long timerDelay = 600000;
 // Set timer to 10 seconds (10000)
-unsigned long timerDelay = 600000;
+unsigned long weatherTimerDelay = 10000;
 
 auto temp = 0;
 auto humidity = 0;
@@ -53,16 +53,16 @@ String httpGETRequest(const char* serverName) {
 void getWeather() {
   String serverPath = "http://api.openweathermap.org/data/2.5/weather?zip=" + zip + "," + countryCode + "&units=" + units + "&appid=" + openWeatherMapApiKey;
 
-  int localHumidity = dht.readHumidity();
-  int localTemp = dht.readTemperature(true);
-  
   //if ((millis() - lastTime) > timerDelay)
-  if (lastTime == 0) {
+  if (weatherLastTime == 0) {
     
     jsonBuffer = httpGETRequest(serverPath.c_str());
     Serial.println(jsonBuffer);
     DynamicJsonDocument myObject(1024);
     deserializeJson(myObject, jsonBuffer);
+
+    int localHumidity = dht.readHumidity();
+    int localTemp = dht.readTemperature(true);
 
     if(myObject["main"]["temp"] > 0) {
       temp = myObject["main"]["temp"].as<int>();  
@@ -86,14 +86,17 @@ void getWeather() {
     Serial.print("Wind Speed: ");
     Serial.println(windSpeed);
   
-    lastTime = millis();
+    weatherLastTime = millis();
 
+    sprintf(weather, "%02d/%02dF %02d%/%02d%%", temp, localTemp, humidity, localHumidity);
+    
   }
 
-  if ((millis() - lastTime) > timerDelay) {
-    lastTime = 0;
+  displayText(weather, 1/2, 1, 0);
+
+  if ((millis() - weatherLastTime) > weatherTimerDelay) {
+    weatherLastTime = 0;
   }
   
-  sprintf(weather, "%02d/%02dF %02d%/%02d%%", temp, localTemp, humidity, localHumidity);
-  displayText(weather, 2/4, 1, 0);
+
 }
