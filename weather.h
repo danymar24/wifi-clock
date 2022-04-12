@@ -63,6 +63,7 @@ void getWeather() {
 
     int localHumidity = dht.readHumidity();
     int localTemp = dht.readTemperature(true);
+    int hif = dht.computeHeatIndex(localTemp, localHumidity);
 
     if(myObject["main"]["temp"] > 0) {
       temp = myObject["main"]["temp"].as<int>();  
@@ -88,7 +89,7 @@ void getWeather() {
   
     weatherLastTime = millis();
 
-    sprintf(weather, "%02d/%02dF %02d%/%02d%%", temp, localTemp, humidity, localHumidity);
+    sprintf(weather, "%02d/%02dF", temp, hif);
     
   }
 

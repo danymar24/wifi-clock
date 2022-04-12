@@ -108,6 +108,8 @@ void setup() {
 
 void loop() {
 
+  handleOTA();
+
   if (mainTimerLastTime == 0) {
     char txtBuffer[12];
     checkButton();
@@ -123,11 +125,9 @@ void loop() {
     if(WiFi.status() != WL_CONNECTED) {
       getLocalTemperature();
     } else {
-      handleOTA();
       matrix->drawRect(61,1, 2,2, LED_GREEN_MEDIUM);
       getWeather();
     }
-  
     matrix->show();
   }
 
